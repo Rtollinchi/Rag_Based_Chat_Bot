@@ -213,37 +213,7 @@ Summary:"""
         logger.error(f"❌ Error generating summary: {str(e)}")
         return f"❌ Error: {str(e)}"
 
-# Gradio Interface
-with gr.Blocks(theme=gr.themes.Soft()) as demo:
-
-    gr.Markdown("""
-    # 📚 RAG-Based PDF Chatbot
-    Upload a PDF and ask questions about it!
-    """)
-
-    # PDF Upload Section
-    gr.Markdown("## 📤 Step 1: Upload PDF")
-    with gr.Row():
-        pdf_input = gr.File(label="📄 Choose PDF", file_types=[".pdf"])
-        process_btn = gr.Button("🔄 Process PDF", variant="primary")
-
-    status_output = gr.Textbox(label="📊 Status", interactive=False, lines=2)
-
-    # Q&A Section
-    gr.Markdown("## ❓ Step 2: Ask Questions")
-    with gr.Row():
-        query_input = gr.Textbox(
-            label="💭 Your Question",
-            placeholder="What would you like to know?",
-            lines=2
-        )
-        query_btn = gr.Button("🤖 Get Answer", variant="primary")
-
-    answer_output = gr.Textbox(label="💡 Answer", interactive=False, lines=8)
-    sources_output = gr.Textbox(label="📚 Sources", interactive=False, lines=6)
-
-    # Wire up events
- # =====================================================
+# =====================================================
 # GRADIO INTERFACE
 # =====================================================
 
@@ -311,7 +281,7 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
         outputs=[answer_output, sources_output]
     )
 
-# Launch 
+# Launch
 if __name__ == "__main__":
     logger.info("🚀 Launching Gradio interface...")
     demo.launch(inbrowser=True)

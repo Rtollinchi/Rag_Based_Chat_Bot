@@ -48,6 +48,7 @@ checkpoints/
 # Vector databases and embeddings
 *.faiss
 *.index
+faiss_index/
 embeddings/
 vector_store/
 chromadb/
