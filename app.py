@@ -10,6 +10,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
+from langchain_core.messages import HumanMessage
 
 load_dotenv()
 
@@ -151,6 +152,67 @@ def format_sources(source_docs):
 
     return source_text
 
+# =====================================================
+# DOCUMENT SUMMARIZER FEATURE
+# =====================================================
+
+def summarize_document():
+    """Generate a summary of the processed document."""
+    global vectorstore
+
+    if vectorstore is None:
+        return "⚠️ No PDF processed yet! Please upload and process a PDF first."
+
+    try:
+        logger.info("📊 Starting document summarization...")
+
+        # Get 10 diverse chunks (more than Q&A to get better overview)
+        sample_chunks = vectorstore.similarity_search(
+            "overview summary main topics",
+            k=10
+        )
+
+        logger.info(f"📚 Retrieved {len(sample_chunks)} chunks for summary")
+
+        if not sample_chunks:
+            return "⚠️ No content available to summarize."
+
+        # Combine chunks
+        combined_text = "\n\n".join([chunk.page_content for chunk in sample_chunks])
+
+        # Create summarization prompt
+        summarization_prompt = f"""You are a helpful assistant that creates concise summaries.
+
+Please read the following excerpts from a document and create a summary.
+
+Document excerpts:
+{combined_text}
+
+Instructions:
+1. Identify the main topics and themes
+2. Create 3-5 bullet points covering the key ideas
+3. Be concise but informative
+4. Focus on the most important information
+
+Summary:"""
+
+        # Send to LLM
+        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
+
+
+        messages = [HumanMessage(content=summarization_prompt)]
+        response = llm.invoke(messages)
+
+        summary = response.content
+
+        logger.info("✅ Summary generated successfully!")
+
+        return summary
+
+    except Exception as e:
+        logger.error(f"❌ Error generating summary: {str(e)}")
+        return f"❌ Error: {str(e)}"
+
 # Gradio Interface
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
 
@@ -181,10 +243,60 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
     sources_output = gr.Textbox(label="📚 Sources", interactive=False, lines=6)
 
     # Wire up events
+ # =====================================================
+# GRADIO INTERFACE
+# =====================================================
+
+with gr.Blocks(theme=gr.themes.Soft()) as demo:
+
+    gr.Markdown("""
+    # 📚 RAG-Based PDF Chatbot
+    Upload a PDF and ask questions about it!
+    """)
+
+    # PDF Upload Section
+    gr.Markdown("## 📤 Step 1: Upload PDF")
+    with gr.Row():
+        pdf_input = gr.File(label="📄 Choose PDF", file_types=[".pdf"])
+        process_btn = gr.Button("🔄 Process PDF", variant="primary")
+
+    status_output = gr.Textbox(label="📊 Status", interactive=False, lines=2)
+
+    # NEW: Summarize Section
+    gr.Markdown("## 📋 Step 2: Get Document Summary")
+    summarize_btn = gr.Button("📝 Summarize Entire Document", variant="secondary", size="lg")
+    summary_output = gr.Textbox(
+        label="📋 Document Summary",
+        interactive=False,
+        lines=8,
+        placeholder="Click 'Summarize' to get an overview..."
+    )
+
+    # Q&A Section
+    gr.Markdown("## ❓ Step 3: Ask Specific Questions")
+    with gr.Row():
+        query_input = gr.Textbox(
+            label="💭 Your Question",
+            placeholder="What would you like to know?",
+            lines=2
+        )
+        query_btn = gr.Button("🤖 Get Answer", variant="primary")
+
+    answer_output = gr.Textbox(label="💡 Answer", interactive=False, lines=8)
+    sources_output = gr.Textbox(label="📚 Sources", interactive=False, lines=6)
+
+    # Wire up events
     process_btn.click(
         fn=process_pdf,
         inputs=[pdf_input],
         outputs=[status_output]
+    )
+
+    # NEW: Summarize button event
+    summarize_btn.click(
+        fn=summarize_document,
+        inputs=[],
+        outputs=[summary_output]
     )
 
     query_btn.click(
@@ -199,8 +311,8 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
         outputs=[answer_output, sources_output]
     )
 
-
-# Launch the app
+# Launch 
 if __name__ == "__main__":
     logger.info("🚀 Launching Gradio interface...")
-    demo.launch(share=True)
+    demo.launch(inbrowser=True)
+
